@@ -44,6 +44,7 @@ def list_users():
 
 @app.put('/users/{user_id}', response_model=UserPublic)
 def update_user(user_id: int, user: UserSchema):
+    """Rota para atualizar um usuário pelo ID"""
     if user_id > len(database) or user_id < 1:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail='User Not Found'
@@ -57,6 +58,7 @@ def update_user(user_id: int, user: UserSchema):
 
 @app.delete('/users/{user_id}', response_model=Message)
 def deleter_user(user_id: int):
+    """Rota para deletar um usuário pelo ID"""
     if user_id > len(database) or user_id < 1:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail='User Not Found'
@@ -65,3 +67,15 @@ def deleter_user(user_id: int):
     del database[user_id - 1]
 
     return {'message': 'User deleted'}
+
+@app.get('/users/{user_id}', response_model=UserPublic)
+def get_user(user_id: int):
+    """Rota para buscar um usuário pelo ID"""
+    if user_id > len(database) or user_id < 1:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND, detail='User Not Found'
+        )
+    
+    user_with_id = database[user_id - 1]
+
+    return user_with_id
