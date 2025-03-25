@@ -68,6 +68,7 @@ def deleter_user(user_id: int):
 
     return {'message': 'User deleted'}
 
+
 @app.get('/users/{user_id}', response_model=UserPublic)
 def get_user(user_id: int):
     """Rota para buscar um usuário pelo ID"""
@@ -75,7 +76,7 @@ def get_user(user_id: int):
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail='User Not Found'
         )
-    
+
     user_with_id = database[user_id - 1]
 
     return user_with_id
