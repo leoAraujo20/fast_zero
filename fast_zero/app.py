@@ -4,6 +4,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from fast_zero.database import get_session
 from fast_zero.models import User
@@ -39,7 +40,7 @@ def get_html():
 
 
 @app.post('/users', status_code=HTTPStatus.CREATED, response_model=UserPublic)
-def create_user(user: UserSchema, session=Depends(get_session)):
+def create_user(user: UserSchema, session: Session = Depends(get_session)):
     """Rota para criar usuário"""
 
     db_user = session.scalar(
@@ -69,9 +70,10 @@ def create_user(user: UserSchema, session=Depends(get_session)):
 
 
 @app.get('/users', response_model=UserList)
-def list_users():
+def list_users(session: Session = Depends(get_session), skip: int = 0, limit: int = 10):
     """Rota para listar usuários"""
-    return {'users': database}
+    users = session.scalars(select(User).offset(skip).limit(limit))
+    return {'users': users}
 
 
 @app.put('/users/{user_id}', response_model=UserPublic)
