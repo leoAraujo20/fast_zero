@@ -32,18 +32,11 @@ def test_create_user(client):
     }
 
 
-def test_list_users(client):
+def test_list_users_empty(client):
     response = client.get('/users')
 
-    assert response.json() == {
-        'users': [
-            {
-                'id': 1,
-                'username': 'alice',
-                'email': 'alice@example.com',
-            },
-        ]
-    }
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {'users': []}
 
 
 def test_update_user(client):

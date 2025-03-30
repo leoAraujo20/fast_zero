@@ -70,7 +70,9 @@ def create_user(user: UserSchema, session: Session = Depends(get_session)):
 
 
 @app.get('/users', response_model=UserList)
-def list_users(session: Session = Depends(get_session), skip: int = 0, limit: int = 10):
+def list_users(
+    session: Session = Depends(get_session), skip: int = 0, limit: int = 10
+):
     """Rota para listar usuários"""
     users = session.scalars(select(User).offset(skip).limit(limit))
     return {'users': users}
