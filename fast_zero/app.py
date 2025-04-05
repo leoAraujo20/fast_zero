@@ -4,6 +4,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from fast_zero.database import get_session
@@ -40,26 +41,27 @@ def get_html():
 @app.post('/users', status_code=HTTPStatus.CREATED, response_model=UserPublic)
 def create_user(user: UserSchema, session: Session = Depends(get_session)):
     """Rota para criar usuário"""
-
     db_user = session.scalar(
         select(User).where(
-            User.username == user.username or User.email == user.email
+            (User.username == user.username) | (User.email == user.email)
         )
     )
 
     if db_user:
         if db_user.username == user.username:
             raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
-                detail='Username alredy exists',
+                status_code=HTTPStatus.CONFLICT,
+                detail='Username already exists',
             )
         elif db_user.email == user.email:
             raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
-                detail='Email already exists',
+                status_code=HTTPStatus.CONFLICT,
+                detail='E-mail already exists',
             )
 
-    db_user = User(**user.model_dump())
+    db_user = User(
+        username=user.username, password=user.password, email=user.email
+    )
     session.add(db_user)
     session.commit()
     session.refresh(db_user)
@@ -81,27 +83,29 @@ def update_user(
     user_id: int, user: UserSchema, session: Session = Depends(get_session)
 ):
     """Rota para atualizar um usuário pelo ID"""
-    user_db = session.scalar(
-        select(User).where(User.id == user_id)
-    )
+    user_db = session.scalar(select(User).where(User.id == user_id))
     if not user_db:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail='User Not Found'
         )
-
-    user_db.username = user.username
-    user_db.email = user.email
-    user_db.password = user.password
-    session.commit()
-    return user_db
+    try:
+        user_db.username = user.username
+        user_db.email = user.email
+        user_db.password = user.password
+        session.commit()
+        session.refresh(user_db)
+        return user_db
+    except IntegrityError:
+        raise HTTPException(
+            status_code=HTTPStatus.CONFLICT,
+            detail='Username or E-mail already exists',
+        )
 
 
 @app.delete('/users/{user_id}', response_model=Message)
 def deleter_user(user_id: int, session: Session = Depends(get_session)):
     """Rota para deletar um usuário pelo ID"""
-    user_db = session.scalar(
-        select(User).where(User.id == user_id)
-    )
+    user_db = session.scalar(select(User).where(User.id == user_id))
     if not user_db:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail='User Not Found'
@@ -116,9 +120,7 @@ def deleter_user(user_id: int, session: Session = Depends(get_session)):
 @app.get('/users/{user_id}', response_model=UserPublic)
 def get_user(user_id: int, session: Session = Depends(get_session)):
     """Rota para buscar um usuário pelo ID"""
-    user_db = session.scalar(
-        select(User).where(User.id == user_id)
-    )
+    user_db = session.scalar(select(User).where(User.id == user_id))
     if not user_db:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail='User Not Found'

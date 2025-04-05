@@ -34,6 +34,34 @@ def test_create_user(client):
     }
 
 
+def test_create_user_with_existing_username(client, user):
+    response = client.post(
+        '/users',
+        json={
+            'username': 'test',
+            'email': 'alice@example.com',
+            'password': 'secret',
+        },
+    )
+
+    assert response.status_code == HTTPStatus.CONFLICT
+    assert response.json() == {'detail': 'Username already exists'}
+
+
+def test_create_user_with_existing_email(client, user):
+    response = client.post(
+        '/users',
+        json={
+            'username': 'alice',
+            'email': 'test@test.com',
+            'password': 'secret',
+        },
+    )
+
+    assert response.status_code == HTTPStatus.CONFLICT
+    assert response.json() == {'detail': 'E-mail already exists'}
+
+
 def test_list_users(client, user):
     response = client.get('/users')
     user_schema = UserPublic.model_validate(user).model_dump()
@@ -60,11 +88,25 @@ def test_update_user(client, user):
     }
 
 
-def test_user_delete(client, user):
-    response = client.delete('/users/1')
+def test_update_user_should_return_conflict(client, user):
+    client.post(
+        '/users',
+        json={
+            'username': 'bob',
+            'email': 'bob@example.com',
+            'password': 'mynewpassword',
+        }
+    )
+    response = client.put(
+        'users/2',
+        json={
+            'username': 'test',
+            'email': 'bob@example.com',
+            'password': 'mynewpassword',
+        }
+    )
 
-    assert response.status_code == HTTPStatus.OK
-    assert response.json() == {'message': 'User deleted'}
+    assert response.status_code == HTTPStatus.CONFLICT
 
 
 def test_update_user_should_return_not_found(client, user):
@@ -79,6 +121,13 @@ def test_update_user_should_return_not_found(client, user):
 
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.json() == {'detail': 'User Not Found'}
+
+
+def test_user_delete(client, user):
+    response = client.delete('/users/1')
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {'message': 'User deleted'}
 
 
 def test_delete_user_should_return_not_found(client, user):
