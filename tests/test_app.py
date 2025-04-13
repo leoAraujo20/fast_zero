@@ -70,6 +70,20 @@ def test_list_users(client, user):
     assert response.json() == {'users': [user_schema]}
 
 
+def test_list_one_user(client, user):
+    response = client.get('/users/1')
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == UserPublic.model_validate(user).model_dump()
+
+
+def test_list_one_user_should_return_not_found(client, user):
+    response = client.get('/users/2')
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.json() == {'detail': 'User Not Found'}
+
+
 def test_update_user(client, user):
     response = client.put(
         '/users/1',
@@ -95,7 +109,7 @@ def test_update_user_should_return_conflict(client, user):
             'username': 'bob',
             'email': 'bob@example.com',
             'password': 'mynewpassword',
-        }
+        },
     )
     response = client.put(
         'users/2',
@@ -103,7 +117,7 @@ def test_update_user_should_return_conflict(client, user):
             'username': 'test',
             'email': 'bob@example.com',
             'password': 'mynewpassword',
-        }
+        },
     )
 
     assert response.status_code == HTTPStatus.CONFLICT
