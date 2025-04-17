@@ -3,14 +3,19 @@ from http import HTTPStatus
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from fast_zero.database import get_session
 from fast_zero.models import User
-from fast_zero.schemas import Message, UserList, UserPublic, UserSchema
-from fast_zero.security import get_password_hash
+from fast_zero.schemas import Message, Token, UserList, UserPublic, UserSchema
+from fast_zero.security import (
+    create_acess_token,
+    get_curret_user,
+    get_password_hash,
+    verify_password,
+)
 
 app = FastAPI()
 
@@ -74,7 +79,9 @@ def create_user(user: UserSchema, session: Session = Depends(get_session)):
 
 @app.get('/users', response_model=UserList)
 def list_users(
-    session: Session = Depends(get_session), skip: int = 0, limit: int = 10
+    session: Session = Depends(get_session),
+    skip: int = 0,
+    limit: int = 10,
 ):
     """Rota para listar usuários"""
     users = session.scalars(select(User).limit(limit).offset(skip))
@@ -83,38 +90,38 @@ def list_users(
 
 @app.put('/users/{user_id}', response_model=UserPublic)
 def update_user(
-    user_id: int, user: UserSchema, session: Session = Depends(get_session)
+    user_id: int,
+    user: UserSchema,
+    session: Session = Depends(get_session),
+    current_user=Depends(get_curret_user),
 ):
     """Rota para atualizar um usuário pelo ID"""
-    user_db = session.scalar(select(User).where(User.id == user_id))
-    if not user_db:
+    if current_user.id != user_id:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail='User Not Found'
+            status_code=HTTPStatus.NOT_FOUND, detail='Not enough permission'
         )
-    try:
-        user_db.username = user.username
-        user_db.email = user.email
-        user_db.password = get_password_hash(user.password)
-        session.commit()
-        session.refresh(user_db)
-        return user_db
-    except IntegrityError:
-        raise HTTPException(
-            status_code=HTTPStatus.CONFLICT,
-            detail='Username or E-mail already exists',
-        )
+
+    current_user.username = user.username
+    current_user.email = user.email
+    current_user.password = get_password_hash(user.password)
+    session.commit()
+    session.refresh(current_user)
+    return current_user
 
 
 @app.delete('/users/{user_id}', response_model=Message)
-def deleter_user(user_id: int, session: Session = Depends(get_session)):
+def deleter_user(
+    user_id: int,
+    session: Session = Depends(get_session),
+    current_user=Depends(get_curret_user),
+):
     """Rota para deletar um usuário pelo ID"""
-    user_db = session.scalar(select(User).where(User.id == user_id))
-    if not user_db:
+    if current_user.id != user_id:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail='User Not Found'
+            status_code=HTTPStatus.NOT_FOUND, detail='Not enough permission'
         )
 
-    session.delete(user_db)
+    session.delete(current_user)
     session.commit()
 
     return {'message': 'User deleted'}
@@ -130,3 +137,23 @@ def get_user(user_id: int, session: Session = Depends(get_session)):
         )
 
     return user_db
+
+
+@app.post('/token', response_model=Token)
+def login_for_acess_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    session: Session = Depends(get_session),
+):
+    user = session.scalar(
+        select(User).where(User.username == form_data.username)
+    )
+
+    if not user or not verify_password(form_data.password, user.password):
+        raise HTTPException(
+            status_code=HTTPStatus.UNAUTHORIZED,
+            detail='Incorrect username or password',
+        )
+
+    access_token = create_acess_token(data={'sub': user.username})
+
+    return {'access_token': access_token, 'token_type': 'Bearer'}

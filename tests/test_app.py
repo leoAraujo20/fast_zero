@@ -84,25 +84,26 @@ def test_list_one_user_should_return_not_found(client, user):
     assert response.json() == {'detail': 'User Not Found'}
 
 
-def test_update_user(client, user):
+def test_update_user(client, user, token):
     response = client.put(
-        '/users/1',
+        f'/users/{user.id}',
         json={
             'username': 'bob',
             'email': 'bob@example.com',
             'password': 'mynewpassword',
         },
+        headers={'Authorization': f'Bearer {token}'},
     )
 
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {
-        'id': 1,
+        'id': user.id,
         'username': 'bob',
         'email': 'bob@example.com',
     }
 
 
-def test_update_user_should_return_conflict(client, user):
+def test_update_user_should_return_conflict(client, user, token):
     client.post(
         '/users',
         json={
@@ -110,6 +111,7 @@ def test_update_user_should_return_conflict(client, user):
             'email': 'bob@example.com',
             'password': 'mynewpassword',
         },
+        headers={'Authorization': f'Bearer {token}'},
     )
     response = client.put(
         'users/2',
@@ -118,9 +120,11 @@ def test_update_user_should_return_conflict(client, user):
             'email': 'bob@example.com',
             'password': 'mynewpassword',
         },
+        headers={'Authorization': f'Bearer {token}'},
     )
 
-    assert response.status_code == HTTPStatus.CONFLICT
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.json() == {'detail': 'Not enough permission'}
 
 
 def test_update_user_should_return_not_found(client, user):
@@ -137,8 +141,11 @@ def test_update_user_should_return_not_found(client, user):
     assert response.json() == {'detail': 'User Not Found'}
 
 
-def test_user_delete(client, user):
-    response = client.delete('/users/1')
+def test_user_delete(client, user, token):
+    response = client.delete(
+        f'/users/{user.id}',
+        headers={'Authorization': f'Bearer {token}'},
+    )
 
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {'message': 'User deleted'}
@@ -149,3 +156,18 @@ def test_delete_user_should_return_not_found(client, user):
 
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.json() == {'detail': 'User Not Found'}
+
+
+def test_create_access_token(client, user):
+    response = client.post(
+        '/token',
+        data={
+            'username': user.username,
+            'password': user.clean_password,
+        },
+    )
+
+    token = response.json()
+    assert response.status_code == HTTPStatus.OK
+    assert token['token_type'] == 'Bearer'
+    assert 'access_token' in token
