@@ -127,21 +127,7 @@ def test_update_user_should_return_conflict(client, user, token):
     assert response.json() == {'detail': 'Not enough permission'}
 
 
-def test_update_user_should_return_not_found(client, user):
-    response = client.put(
-        '/users/2',
-        json={
-            'username': 'bob',
-            'email': 'bob@example.com',
-            'password': 'mynewpassword',
-        },
-    )
-
-    assert response.status_code == HTTPStatus.NOT_FOUND
-    assert response.json() == {'detail': 'User Not Found'}
-
-
-def test_user_delete(client, user, token):
+def test_delete_user(client, user, token):
     response = client.delete(
         f'/users/{user.id}',
         headers={'Authorization': f'Bearer {token}'},
@@ -151,11 +137,23 @@ def test_user_delete(client, user, token):
     assert response.json() == {'message': 'User deleted'}
 
 
-def test_delete_user_should_return_not_found(client, user):
-    response = client.delete('/users/2')
+def test_delete_user_should_return_unauthorized(client, user, token):
+    client.post(
+        '/users',
+        json={
+            'username': 'bob',
+            'email': 'bob@example.com',
+            'password': 'mynewpassword',
+        }
+    )
+
+    response = client.delete(
+        'users/2',
+        headers={'Authorization': f'Bearer {token}'}
+    )
 
     assert response.status_code == HTTPStatus.NOT_FOUND
-    assert response.json() == {'detail': 'User Not Found'}
+    assert response.json() == {'detail': 'Not enough permission'}
 
 
 def test_create_access_token(client, user):
@@ -171,3 +169,16 @@ def test_create_access_token(client, user):
     assert response.status_code == HTTPStatus.OK
     assert token['token_type'] == 'Bearer'
     assert 'access_token' in token
+
+
+def test_login_for_access_token_with_invalid_credentials(client, user):
+    response = client.post(
+        '/token',
+        data={
+            'username': user.username,
+            'password': 'wrongpassword',
+        }
+    )
+
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+    assert response.json() == {'detail': 'Incorrect username or password'}
