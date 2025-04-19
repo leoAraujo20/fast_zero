@@ -1,6 +1,7 @@
 from http import HTTPStatus
 
 from fast_zero.schemas import UserPublic
+from fast_zero.security import create_acess_token
 
 
 def test_root_return_ok_hello_world(client):
@@ -144,12 +145,11 @@ def test_delete_user_should_return_unauthorized(client, user, token):
             'username': 'bob',
             'email': 'bob@example.com',
             'password': 'mynewpassword',
-        }
+        },
     )
 
     response = client.delete(
-        'users/2',
-        headers={'Authorization': f'Bearer {token}'}
+        'users/2', headers={'Authorization': f'Bearer {token}'}
     )
 
     assert response.status_code == HTTPStatus.NOT_FOUND
@@ -177,8 +177,34 @@ def test_login_for_access_token_with_invalid_credentials(client, user):
         data={
             'username': user.username,
             'password': 'wrongpassword',
-        }
+        },
     )
 
     assert response.status_code == HTTPStatus.UNAUTHORIZED
     assert response.json() == {'detail': 'Incorrect username or password'}
+
+
+def test_get_current_user_with_invalid_token(client):
+    data = {'no-username': 'test'}
+    token = create_acess_token(data)
+
+    response = client.delete(
+        'users/1',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+    assert response.json() == {'detail': 'Could not validate credentials'}
+
+
+def test_get_current_user_does_not_exist(client):
+    data = {'sub': 'test'}
+    token = create_acess_token(data)
+
+    response = client.delete(
+        'users/1',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+    assert response.json() == {'detail': 'Could not validate credentials'}
