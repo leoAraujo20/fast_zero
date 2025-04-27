@@ -1,13 +1,15 @@
 from jwt import decode
 
-from fast_zero.security import ALGORITHM, SECRET_KEY, create_acess_token
+from fast_zero.security import create_acess_token, settings
 
 
 def test_create_jwt_token():
     data = {'sub': 'test_user'}
     token = create_acess_token(data)
 
-    decoded_data = decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    decoded_data = decode(
+        token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+    )
 
     assert decoded_data['sub'] == 'test_user'
     assert 'exp' in decoded_data

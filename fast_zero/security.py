@@ -12,13 +12,11 @@ from sqlalchemy.orm import Session
 
 from fast_zero.database import get_session
 from fast_zero.models import User
+from fast_zero.settings import Settings
 
 pwd_context = PasswordHash.recommended()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='token')
-
-SECRET_KEY = 'your_secret_key'
-ALGORITHM = 'HS256'
-ACESS_TOKEN_EXPIRE_MINUTES = 30
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/auth/token')
+settings = Settings()
 
 
 def get_password_hash(password: str) -> str:
@@ -33,11 +31,13 @@ def create_acess_token(data: dict):
     payload = data.copy()
 
     expire = datetime.now(tz=ZoneInfo('UTC')) + timedelta(
-        minutes=ACESS_TOKEN_EXPIRE_MINUTES
+        minutes=settings.ACESS_TOKEN_EXPIRE_MINUTES
     )
 
     payload.update({'exp': expire})
-    encoded_jwt = encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = encode(
+        payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
 
     return encoded_jwt
 
@@ -53,7 +53,9 @@ def get_curret_user(
     )
 
     try:
-        paylaod = decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        paylaod = decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
         username = paylaod.get('sub')
         if not username:
             raise credentials_exception
