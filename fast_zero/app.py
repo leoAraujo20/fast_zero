@@ -21,12 +21,12 @@ app.add_middleware(
 
 
 @app.get('/', status_code=HTTPStatus.OK, response_model=Message)
-def read_root():
+async def read_root():
     return {'message': 'Olá Mundo!'}
 
 
 @app.get('/html', status_code=HTTPStatus.OK, response_class=HTMLResponse)
-def get_html():
+async def get_html():
     return """
     <html>
         <head>
