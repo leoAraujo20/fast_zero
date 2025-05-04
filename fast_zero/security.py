@@ -8,7 +8,7 @@ from jwt import decode, encode
 from jwt.exceptions import PyJWTError
 from pwdlib import PasswordHash
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from fast_zero.database import get_session
 from fast_zero.models import User
@@ -42,8 +42,8 @@ def create_acess_token(data: dict):
     return encoded_jwt
 
 
-def get_curret_user(
-    session: Session = Depends(get_session),
+async def get_curret_user(
+    session: AsyncSession = Depends(get_session),
     token: str = Depends(oauth2_scheme),
 ):
     credentials_exception = HTTPException(
@@ -62,7 +62,9 @@ def get_curret_user(
     except PyJWTError:
         raise credentials_exception
 
-    user_db = session.scalar(select(User).where(User.username == username))
+    user_db = await session.scalar(
+        select(User).where(User.username == username)
+    )
 
     if not user_db:
         raise credentials_exception

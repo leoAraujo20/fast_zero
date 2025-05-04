@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from fast_zero.database import get_session
 from fast_zero.models import User
@@ -11,23 +11,36 @@ from fast_zero.schemas import Message, UserList, UserPublic, UserSchema
 from fast_zero.security import get_curret_user, get_password_hash
 
 router = APIRouter(prefix='/users', tags=['users'])
-T_Session = Annotated[Session, Depends(get_session)]
+T_Session = Annotated[AsyncSession, Depends(get_session)]
 T_CurrentUser = Annotated[User, Depends(get_curret_user)]
 
 
 @router.get('', response_model=UserList)
-def list_users(
+async def read_users(
     session: T_Session,
     skip: int = 0,
     limit: int = 10,
 ):
     """Rota para listar usuários"""
-    users = session.scalars(select(User).limit(limit).offset(skip))
+    query = await session.scalars(select(User).limit(limit).offset(skip))
+    users = query.all()
     return {'users': users}
 
 
+@router.get('/{user_id}', response_model=UserPublic)
+async def read_user(user_id: int, session: T_Session):
+    """Rota para buscar um usuário pelo ID"""
+    user_db = await session.scalar(select(User).where(User.id == user_id))
+    if not user_db:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND, detail='User Not Found'
+        )
+
+    return user_db
+
+
 @router.put('/{user_id}', response_model=UserPublic)
-def update_user(
+async def update_user(
     user_id: int,
     user: UserSchema,
     session: T_Session,
@@ -42,13 +55,13 @@ def update_user(
     current_user.username = user.username
     current_user.email = user.email
     current_user.password = get_password_hash(user.password)
-    session.commit()
-    session.refresh(current_user)
+    await session.commit()
+    await session.refresh(current_user)
     return current_user
 
 
 @router.delete('/{user_id}', response_model=Message)
-def deleter_user(
+async def deleter_user(
     user_id: int,
     session: T_Session,
     current_user: T_CurrentUser,
@@ -59,28 +72,16 @@ def deleter_user(
             status_code=HTTPStatus.FORBIDDEN, detail='Not enough permission'
         )
 
-    session.delete(current_user)
-    session.commit()
+    await session.delete(current_user)
+    await session.commit()
 
     return {'message': 'User deleted'}
 
 
-@router.get('/{user_id}', response_model=UserPublic)
-def get_user(user_id: int, session: T_Session):
-    """Rota para buscar um usuário pelo ID"""
-    user_db = session.scalar(select(User).where(User.id == user_id))
-    if not user_db:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail='User Not Found'
-        )
-
-    return user_db
-
-
 @router.post('', status_code=HTTPStatus.CREATED, response_model=UserPublic)
-def create_user(user: UserSchema, session: T_Session):
+async def create_user(user: UserSchema, session: T_Session):
     """Rota para criar usuário"""
-    db_user = session.scalar(
+    db_user = await session.scalar(
         select(User).where(
             (User.username == user.username) | (User.email == user.email)
         )
@@ -104,7 +105,7 @@ def create_user(user: UserSchema, session: T_Session):
         email=user.email,
     )
     session.add(db_user)
-    session.commit()
-    session.refresh(db_user)
+    await session.commit()
+    await session.refresh(db_user)
 
     return db_user

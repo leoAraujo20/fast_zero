@@ -49,7 +49,7 @@ def test_create_user_with_existing_email(client, user):
     assert response.json() == {'detail': 'E-mail already exists'}
 
 
-def test_list_users(client, user):
+def test_read_users(client, user):
     response = client.get('/users')
     user_schema = UserPublic.model_validate(user).model_dump()
 
@@ -57,14 +57,14 @@ def test_list_users(client, user):
     assert response.json() == {'users': [user_schema]}
 
 
-def test_list_one_user(client, user):
+def test_read_one_user(client, user):
     response = client.get('/users/1')
 
     assert response.status_code == HTTPStatus.OK
     assert response.json() == UserPublic.model_validate(user).model_dump()
 
 
-def test_list_one_user_should_return_not_found(client, user):
+def test_read_one_user_should_return_not_found(client, user):
     response = client.get('/users/2')
 
     assert response.status_code == HTTPStatus.NOT_FOUND
