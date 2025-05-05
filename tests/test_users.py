@@ -1,7 +1,7 @@
 from http import HTTPStatus
 
 from fast_zero.schemas import UserPublic
-from fast_zero.security import create_acess_token
+from fast_zero.security import create_access_token
 
 
 def test_create_user(client):
@@ -144,7 +144,7 @@ def test_delete_user_should_return_unauthorized(client, user, token):
 
 def test_get_current_user_with_invalid_token(client):
     data = {'no-username': 'test'}
-    token = create_acess_token(data)
+    token = create_access_token(data)
 
     response = client.delete(
         'users/1',
@@ -157,7 +157,7 @@ def test_get_current_user_with_invalid_token(client):
 
 def test_get_current_user_does_not_exist(client):
     data = {'sub': 'test'}
-    token = create_acess_token(data)
+    token = create_access_token(data)
 
     response = client.delete(
         'users/1',

@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
-from jwt import decode, encode
+from jwt import ExpiredSignatureError, decode, encode
 from jwt.exceptions import PyJWTError
 from pwdlib import PasswordHash
 from sqlalchemy import select
@@ -27,7 +27,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def create_acess_token(data: dict):
+def create_access_token(data: dict):
     payload = data.copy()
 
     expire = datetime.now(tz=ZoneInfo('UTC')) + timedelta(
@@ -59,6 +59,8 @@ async def get_curret_user(
         username = paylaod.get('sub')
         if not username:
             raise credentials_exception
+    except ExpiredSignatureError:
+        raise credentials_exception
     except PyJWTError:
         raise credentials_exception
 
