@@ -25,7 +25,7 @@ def test_create_user_with_existing_username(client, user):
     response = client.post(
         '/users',
         json={
-            'username': 'test',
+            'username': f'{user.username}',
             'email': 'alice@example.com',
             'password': 'secret',
         },
@@ -40,7 +40,7 @@ def test_create_user_with_existing_email(client, user):
         '/users',
         json={
             'username': 'alice',
-            'email': 'test@test.com',
+            'email': f'{user.email}',
             'password': 'secret',
         },
     )
@@ -90,18 +90,9 @@ def test_update_user(client, user, token):
     }
 
 
-def test_update_user_should_return_conflict(client, user, token):
-    client.post(
-        '/users',
-        json={
-            'username': 'bob',
-            'email': 'bob@example.com',
-            'password': 'mynewpassword',
-        },
-        headers={'Authorization': f'Bearer {token}'},
-    )
+def test_update_user_should_return_conflict(client, user, other_user, token):
     response = client.put(
-        'users/2',
+        f'users/{other_user.id}',
         json={
             'username': 'test',
             'email': 'bob@example.com',
@@ -124,18 +115,11 @@ def test_delete_user(client, user, token):
     assert response.json() == {'message': 'User deleted'}
 
 
-def test_delete_user_should_return_unauthorized(client, user, token):
-    client.post(
-        '/users',
-        json={
-            'username': 'bob',
-            'email': 'bob@example.com',
-            'password': 'mynewpassword',
-        },
-    )
-
+def test_delete_user_should_return_unauthorized(
+    client, user, other_user, token
+):
     response = client.delete(
-        'users/2', headers={'Authorization': f'Bearer {token}'}
+        f'users/{other_user.id}', headers={'Authorization': f'Bearer {token}'}
     )
 
     assert response.status_code == HTTPStatus.FORBIDDEN

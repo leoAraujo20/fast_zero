@@ -59,7 +59,23 @@ async def user(session):
     await session.refresh(user)
 
     user.clean_password = password
+    return user
 
+
+@pytest_asyncio.fixture
+async def other_user(session):
+    password = 'test345'
+    user = User(
+        username='test2',
+        password=get_password_hash(password),
+        email='test2@test.com'
+    )
+
+    session.add(user)
+    await session.commit()
+    await session.refresh(user)
+
+    user.clean_password = password
     return user
 
 
