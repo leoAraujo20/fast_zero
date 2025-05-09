@@ -41,8 +41,7 @@ async def session():
 
 
 @pytest_asyncio.fixture
-async def mock_db_time(session):
-    ...
+async def mock_db_time(session): ...
 
 
 @pytest_asyncio.fixture
@@ -68,7 +67,7 @@ async def other_user(session):
     user = User(
         username='test2',
         password=get_password_hash(password),
-        email='test2@test.com'
+        email='test2@test.com',
     )
 
     session.add(user)
