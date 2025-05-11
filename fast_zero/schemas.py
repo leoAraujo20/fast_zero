@@ -1,6 +1,17 @@
 from pydantic import BaseModel, ConfigDict, EmailStr
 
-from fast_zero.models import TodoStates
+from fast_zero.models import TodoState
+
+
+class FilterPage(BaseModel):
+    offset: int = 0
+    limit: int = 100
+
+
+class FilterTodo(FilterPage):
+    title: str | None = None
+    description: str | None = None
+    state: TodoState | None = None
 
 
 class Message(BaseModel):
@@ -36,7 +47,7 @@ class Token(BaseModel):
 class TodoSchema(BaseModel):
     title: str
     description: str
-    state: TodoStates
+    state: TodoState
 
 
 class TodoPublic(TodoSchema):

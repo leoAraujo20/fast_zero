@@ -25,7 +25,7 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('title', sa.String(), nullable=False),
     sa.Column('description', sa.String(), nullable=False),
-    sa.Column('state', sa.Enum('draft', 'todo', 'doing', 'done', 'trash', name='todostates'), nullable=False),
+    sa.Column('state', sa.Enum('draft', 'todo', 'doing', 'done', 'trash', name='TodoState'), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')

@@ -1,13 +1,19 @@
 from http import HTTPStatus
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fast_zero.database import get_session
 from fast_zero.models import User
-from fast_zero.schemas import Message, UserList, UserPublic, UserSchema
+from fast_zero.schemas import (
+    FilterPage,
+    Message,
+    UserList,
+    UserPublic,
+    UserSchema,
+)
 from fast_zero.security import get_curret_user, get_password_hash
 
 router = APIRouter(prefix='/users', tags=['users'])
@@ -17,12 +23,12 @@ T_CurrentUser = Annotated[User, Depends(get_curret_user)]
 
 @router.get('', response_model=UserList)
 async def read_users(
-    session: T_Session,
-    skip: int = 0,
-    limit: int = 10,
+    session: T_Session, filter_query: Annotated[FilterPage, Query()]
 ):
     """Rota para listar usuários"""
-    query = await session.scalars(select(User).limit(limit).offset(skip))
+    query = await session.scalars(
+        select(User).offset(filter_query.offset).limit(filter_query.limit)
+    )
     users = query.all()
     return {'users': users}
 

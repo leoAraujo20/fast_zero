@@ -1,11 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from fast_zero.database import get_session
 from fast_zero.models import Todo, User
-from fast_zero.schemas import TodoPublic, TodoSchema
+from fast_zero.schemas import FilterTodo, TodoList, TodoPublic, TodoSchema
 from fast_zero.security import get_curret_user
 
 router = APIRouter(prefix='/todos', tags=['todos'])
@@ -18,7 +19,7 @@ T_CurrentUser = Annotated[User, Depends(get_curret_user)]
 async def create_todo(
     todo: TodoSchema, session: T_Session, user: T_CurrentUser
 ):
-    """Rota para criar um todo"""
+    """Rota para criar uma todo"""
 
     todo_db = Todo(
         title=todo.title,
@@ -32,3 +33,31 @@ async def create_todo(
     await session.refresh(todo_db)
 
     return todo_db
+
+
+@router.get('', response_model=TodoList)
+async def read_todos(
+    session: T_Session,
+    current_user: T_CurrentUser,
+    filter_query: Annotated[FilterTodo, Query()],
+):
+    """Rota para listar todos os todos do usuário logado"""
+
+    query = select(Todo).where(Todo.user_id == current_user.id)
+
+    if filter_query.title:
+        query = query.filter(Todo.title.contains(filter_query.title))
+
+    if filter_query.description:
+        query = query.filter(
+            Todo.description.contains(filter_query.description)
+        )
+
+    if filter_query.state:
+        query = query.filter(Todo.state == filter_query.state)
+
+    todos = await session.scalars(
+        query.offset(filter_query.offset).limit(filter_query.limit)
+    )
+
+    return {'todos': todos.all()}

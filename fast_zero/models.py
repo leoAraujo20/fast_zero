@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, registry, relationship
 table_registry = registry()
 
 
-class TodoStates(str, Enum):
+class TodoState(str, Enum):
     draft = 'draft'
     todo = 'todo'
     doing = 'doing'
@@ -41,5 +41,5 @@ class Todo:
     id: Mapped[int] = mapped_column(primary_key=True, init=False)
     title: Mapped[str]
     description: Mapped[str]
-    state: Mapped[TodoStates]
+    state: Mapped[TodoState]
     user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
