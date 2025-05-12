@@ -1,12 +1,19 @@
+from http import HTTPStatus
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from fast_zero.database import get_session
 from fast_zero.models import Todo, User
-from fast_zero.schemas import FilterTodo, TodoList, TodoPublic, TodoSchema
+from fast_zero.schemas import (
+    FilterTodo,
+    TodoList,
+    TodoPublic,
+    TodoSchema,
+    TodoUpdate,
+)
 from fast_zero.security import get_curret_user
 
 router = APIRouter(prefix='/todos', tags=['todos'])
@@ -15,7 +22,7 @@ T_Session = Annotated[Session, Depends(get_session)]
 T_CurrentUser = Annotated[User, Depends(get_curret_user)]
 
 
-@router.post('/create', response_model=TodoPublic)
+@router.post('', response_model=TodoPublic)
 async def create_todo(
     todo: TodoSchema, session: T_Session, user: T_CurrentUser
 ):
@@ -61,3 +68,51 @@ async def read_todos(
     )
 
     return {'todos': todos.all()}
+
+
+@router.patch('/{todo_id}', response_model=TodoPublic)
+async def update_todo(
+    todo_id: int, session: T_Session, user: T_CurrentUser, todo: TodoUpdate
+):
+    """Rota para atualizar uma todo"""
+    todo_db = await session.scalar(
+        select(Todo).where(Todo.user_id == user.id, Todo.id == todo_id)
+    )
+
+    if not todo_db:
+        raise HTTPException(
+            detail='Todo not found',
+            status_code=HTTPStatus.NOT_FOUND,
+        )
+
+    for key, value in todo.model_dump(exclude_unset=True).items():
+        setattr(todo_db, key, value)
+
+    session.add(todo_db)
+    await session.commit()
+    await session.refresh(todo_db)
+
+    return todo_db
+
+
+@router.delete('/{todo_id}')
+async def delete_todo(
+    todo_id: int,
+    session: T_Session,
+    user: T_CurrentUser,
+):
+    """Roota para deletar uma todo"""
+    todo_db = await session.scalar(
+        select(Todo).where(Todo.user_id == user.id, Todo.id == todo_id)
+    )
+
+    if not todo_db:
+        raise HTTPException(
+            detail='Todo not found',
+            status_code=HTTPStatus.NOT_FOUND,
+        )
+
+    await session.delete(todo_db)
+    await session.commit()
+
+    return {'message': 'Todo deleted'}

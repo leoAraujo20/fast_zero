@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 import factory
 import factory.fuzzy
 import pytest
@@ -17,7 +19,7 @@ class TodoFactory(factory.Factory):
 
 def test_create_todo(client, user, token):
     response = client.post(
-        '/todos/create',
+        '/todos',
         json={
             'title': 'Test Todo',
             'description': 'This is a test todo',
@@ -37,9 +39,7 @@ def test_create_todo(client, user, token):
 @pytest.mark.asyncio
 async def test_read_todos(session, client, user, token):
     expected_todos = 5
-    session.add_all(
-        TodoFactory.build_batch(expected_todos, user_id=user.id)
-    )
+    session.add_all(TodoFactory.build_batch(expected_todos, user_id=user.id))
 
     await session.commit()
 
@@ -52,13 +52,9 @@ async def test_read_todos(session, client, user, token):
 
 
 @pytest.mark.asyncio
-async def test_read_todos_with_pagination(
-    session, client, user, token
-):
+async def test_read_todos_with_pagination(session, client, user, token):
     expected_todos = 2
-    session.add_all(
-        TodoFactory.build_batch(5, user_id=user.id)
-    )
+    session.add_all(TodoFactory.build_batch(5, user_id=user.id))
 
     await session.commit()
     response = client.get(
@@ -71,9 +67,7 @@ async def test_read_todos_with_pagination(
 
 
 @pytest.mark.asyncio
-async def test_read_todos_with_filter_title(
-    session, client, user, token
-):
+async def test_read_todos_with_filter_title(session, client, user, token):
     expected_todos = 5
     session.add_all(
         TodoFactory.build_batch(5, title='Test Title', user_id=user.id)
@@ -111,9 +105,7 @@ async def test_read_todos_with_filter_description(
 
 
 @pytest.mark.asyncio
-async def test_read_todos_with_filter_state(
-    session, client, user, token
-):
+async def test_read_todos_with_filter_state(session, client, user, token):
     expected_todos = 5
     session.add_all(
         TodoFactory.build_batch(5, state=TodoState.done, user_id=user.id)
@@ -130,9 +122,7 @@ async def test_read_todos_with_filter_state(
 
 
 @pytest.mark.asyncio
-async def test_read_todos_with_all_filters(
-    session, client, user, token
-):
+async def test_read_todos_with_all_filters(session, client, user, token):
     expected_todos = 5
     session.add_all(
         TodoFactory.build_batch(
@@ -166,3 +156,61 @@ async def test_read_todos_with_all_filters(
     )
 
     assert len(response.json()['todos']) == expected_todos
+
+
+@pytest.mark.asyncio
+async def test_update_todo(session, client, user, token):
+    todo = TodoFactory(user_id=user.id)
+
+    session.add(todo)
+    await session.commit()
+
+    response = client.patch(
+        '/todos/1',
+        json={'title': 'Updated Title'},
+        headers={'Authorization': f'bearer {token}'},
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {
+        'id': 1,
+        'title': 'Updated Title',
+        'description': todo.description,
+        'state': todo.state,
+    }
+
+
+def test_update_todo_not_found(client, token):
+    response = client.patch(
+        '/todos/1',
+        json={'title': 'Updated Title'},
+        headers={'Authorization': f'bearer {token}'},
+    )
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.json() == {'detail': 'Todo not found'}
+
+
+@pytest.mark.asyncio
+async def test_delete_todo(session, client, user, token):
+    todo = TodoFactory(user_id=user.id)
+
+    session.add(todo)
+    await session.commit()
+
+    response = client.delete(
+        '/todos/1', headers={'Authorization': f'bearer {token}'}
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {'message': 'Todo deleted'}
+
+
+@pytest.mark.asyncio
+async def test_delete_todo_not_found(client, token):
+    response = client.delete(
+        '/todos/1', headers={'Authorization': f'bearer {token}'}
+    )
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.json() == {'detail': 'Todo not found'}
