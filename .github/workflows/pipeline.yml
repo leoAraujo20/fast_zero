@@ -6,6 +6,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
       - name: Instalar o python
         uses: actions/setup-python@v5
         with:
@@ -19,5 +22,5 @@ jobs:
           poetry install
       - name: Rodar os testes 
         run: |
-          poetry run task test 
-        
+          poetry run task test
+
