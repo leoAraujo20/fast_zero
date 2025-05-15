@@ -9,5 +9,15 @@ jobs:
       - name: Instalar o python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
-            
+          python-version: "3.13"
+      - name: Instalar poetry
+        run: |
+          python -m pip install poetry
+          poetry config virtualenvs.create false
+      - name: Instalar dependências
+        run: |
+          poetry install
+      - name: Rodar os testes 
+        run: |
+          poetry run task test 
+        
